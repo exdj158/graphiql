@@ -7,6 +7,7 @@
 import * as GraphiQLReact from '@graphiql/react';
 import { createGraphiQLFetcher } from '@graphiql/toolkit';
 import * as GraphQL from 'graphql';
+import './utils/i18n';
 import { GraphiQL } from './components/GraphiQL';
 
 import '@graphiql/react/font/roboto.css';
