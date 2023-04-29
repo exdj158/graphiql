@@ -9,6 +9,8 @@ import React, {
   ComponentType,
   PropsWithChildren,
   ReactNode,
+  useEffect,
+  useReducer,
   useState,
 } from 'react';
 
@@ -53,8 +55,9 @@ import {
   UseVariableEditorArgs,
   VariableEditor,
   WriteableEditorProps,
+  Menu,
 } from '@graphiql/react';
-import i18n from '../utils/i18n';
+import i18n, { I18nResources, resources } from '../utils/i18n';
 
 const { t } = i18n;
 const majorVersion = parseInt(React.version.slice(0, 2), 10);
@@ -84,7 +87,10 @@ export type GraphiQLToolbarConfig = {
  * https://graphiql-test.netlify.app/typedoc/modules/graphiql.html#graphiqlprops
  */
 export type GraphiQLProps = Omit<GraphiQLProviderProps, 'children'> &
-  GraphiQLInterfaceProps;
+  GraphiQLInterfaceProps & {
+    /** set i18n language resource */
+    i18nResources?: I18nResources;
+  };
 
 /**
  * The top-level React component for GraphiQL, intended to encompass the entire
@@ -121,8 +127,25 @@ export function GraphiQL({
   variables,
   visiblePlugin,
   defaultHeaders,
+  i18nResources,
   ...props
 }: GraphiQLProps) {
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+
+  useEffect(() => {
+    if (!i18nResources) {
+      return;
+    }
+
+    try {
+      for (const key of Object.keys(i18nResources)) {
+        i18n.addResources(key, 'translations', i18nResources[key].translations);
+      }
+    } catch {}
+
+    forceUpdate();
+  }, [i18nResources]);
+
   // Ensure props are correct
   if (typeof fetcher !== 'function') {
     throw new TypeError(
@@ -155,7 +178,9 @@ export function GraphiQL({
       response={response}
       schema={schema}
       schemaDescription={schemaDescription}
-      shouldPersistHeaders={shouldPersistHeaders}
+      shouldPersistHeaders={
+        localStorage.getItem('graphiql:shouldPersistHeaders') === 'true'
+      }
       storage={storage}
       validationRules={validationRules}
       variables={variables}
@@ -297,25 +322,28 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
   const toolbar = children.find(child =>
     isChildComponentType(child, GraphiQL.Toolbar),
   ) || (
-      <>
-        <ToolbarButton
-          onClick={() => prettify()}
-          label={t("Prettify query (Shift-Ctrl-P)")}
-        >
-          <PrettifyIcon className="graphiql-toolbar-icon" aria-hidden="true" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => merge()}
-          label={t("Merge fragments into query (Shift-Ctrl-M)")}
-        >
-          <MergeIcon className="graphiql-toolbar-icon" aria-hidden="true" />
-        </ToolbarButton>
-        <ToolbarButton onClick={() => copy()} label={t("Copy query (Shift-Ctrl-C)")}>
-          <CopyIcon className="graphiql-toolbar-icon" aria-hidden="true" />
-        </ToolbarButton>
-        {props.toolbar?.additionalContent || null}
-      </>
-    );
+    <>
+      <ToolbarButton
+        onClick={() => prettify()}
+        label={t('Prettify query (Shift-Ctrl-P)')}
+      >
+        <PrettifyIcon className="graphiql-toolbar-icon" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => merge()}
+        label={t('Merge fragments into query (Shift-Ctrl-M)')}
+      >
+        <MergeIcon className="graphiql-toolbar-icon" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => copy()}
+        label={t('Copy query (Shift-Ctrl-C)')}
+      >
+        <CopyIcon className="graphiql-toolbar-icon" aria-hidden="true" />
+      </ToolbarButton>
+      {props.toolbar?.additionalContent || null}
+    </>
+  );
 
   const footer = children.find(child =>
     isChildComponentType(child, GraphiQL.Footer),
@@ -340,7 +368,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
         <div className="graphiql-sidebar-section">
           {pluginContext?.plugins.map(plugin => {
             const isVisible = plugin === pluginContext.visiblePlugin;
-            const label = `${isVisible ? t('Hide') : t('Show')} ${t(plugin.title)}`;
+            const label = `${isVisible ? t('Hide') : t('Show')} ${t(
+              plugin.title,
+            )}`;
             const Icon = plugin.icon;
             return (
               <Tooltip key={t(plugin.title)} label={label}>
@@ -365,12 +395,12 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
           })}
         </div>
         <div className="graphiql-sidebar-section">
-          <Tooltip label={t("Re-fetch GraphQL schema")}>
+          <Tooltip label={t('Re-fetch GraphQL schema')}>
             <UnStyledButton
               type="button"
               disabled={schemaContext.isFetching}
               onClick={() => schemaContext.introspect()}
-              aria-label={t("Re-fetch GraphQL schema") || ""}
+              aria-label={t('Re-fetch GraphQL schema') || ''}
             >
               <ReloadIcon
                 className={schemaContext.isFetching ? 'graphiql-spin' : ''}
@@ -378,20 +408,20 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
               />
             </UnStyledButton>
           </Tooltip>
-          <Tooltip label={t("Open short keys dialog")}>
+          <Tooltip label={t('Open short keys dialog')}>
             <UnStyledButton
               type="button"
               onClick={() => setShowDialog('short-keys')}
-              aria-label={t("Open short keys dialog") || ""}
+              aria-label={t('Open short keys dialog') || ''}
             >
               <KeyboardShortcutIcon aria-hidden="true" />
             </UnStyledButton>
           </Tooltip>
-          <Tooltip label={t("Open settings dialog")}>
+          <Tooltip label={t('Open settings dialog')}>
             <UnStyledButton
               type="button"
               onClick={() => setShowDialog('settings')}
-              aria-label={t("Open settings dialog") || ""}
+              aria-label={t('Open settings dialog') || ''}
             >
               <SettingsIcon aria-hidden="true" />
             </UnStyledButton>
@@ -448,7 +478,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                       </Tab>
                     ))}
                     <div>
-                      <Tooltip label={t("Add tab")}>
+                      <Tooltip label={t('Add tab')}>
                         <UnStyledButton
                           type="button"
                           className="graphiql-tab-add"
@@ -465,7 +495,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
               <div className="graphiql-session-header-right">
                 {editorContext.tabs.length === 1 ? (
                   <div className="graphiql-add-tab-wrapper">
-                    <Tooltip label={t("Add tab")}>
+                    <Tooltip label={t('Add tab')}>
                       <UnStyledButton
                         type="button"
                         className="graphiql-tab-add"
@@ -488,8 +518,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
             >
               <div ref={editorResize.firstRef}>
                 <div
-                  className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''
-                    }`}
+                  className={`graphiql-editors${
+                    editorContext.tabs.length === 1 ? ' full-height' : ''
+                  }`}
                 >
                   <div ref={editorToolsResize.firstRef}>
                     <section
@@ -523,7 +554,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                           type="button"
                           className={
                             activeSecondaryEditor === 'variables' &&
-                              editorToolsResize.hiddenElement !== 'second'
+                            editorToolsResize.hiddenElement !== 'second'
                               ? 'active'
                               : ''
                           }
@@ -534,14 +565,14 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                             setActiveSecondaryEditor('variables');
                           }}
                         >
-                          {t("Variables")}
+                          {t('Variables')}
                         </UnStyledButton>
                         {isHeadersEditorEnabled ? (
                           <UnStyledButton
                             type="button"
                             className={
                               activeSecondaryEditor === 'headers' &&
-                                editorToolsResize.hiddenElement !== 'second'
+                              editorToolsResize.hiddenElement !== 'second'
                                 ? 'active'
                                 : ''
                             }
@@ -554,7 +585,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                               setActiveSecondaryEditor('headers');
                             }}
                           >
-                            {t("Headers")}
+                            {t('Headers')}
                           </UnStyledButton>
                         ) : null}
                       </div>
@@ -576,8 +607,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                           }}
                           aria-label={
                             editorToolsResize.hiddenElement === 'second'
-                              ? t('Show editor tools') || ""
-                              : t('Hide editor tools') || ""
+                              ? t('Show editor tools') || ''
+                              : t('Hide editor tools') || ''
                           }
                         >
                           {editorToolsResize.hiddenElement === 'second' ? (
@@ -648,7 +679,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
         onDismiss={() => setShowDialog(null)}
       >
         <div className="graphiql-dialog-header">
-          <div className="graphiql-dialog-title">{t("Short Keys")}</div>
+          <div className="graphiql-dialog-title">{t('Short Keys')}</div>
           <Dialog.Close onClick={() => setShowDialog(null)} />
         </div>
         <div className="graphiql-dialog-section">
@@ -656,8 +687,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
             <table className="graphiql-table">
               <thead>
                 <tr>
-                  <th>{t("Short Key")}</th>
-                  <th>{t("Function")}</th>
+                  <th>{t('Short Key')}</th>
+                  <th>{t('Function')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -667,7 +698,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">F</code>
                   </td>
-                  <td>{t("Search in editor")}</td>
+                  <td>{t('Search in editor')}</td>
                 </tr>
                 <tr>
                   <td>
@@ -675,7 +706,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">K</code>
                   </td>
-                  <td>{t("Search in documentation")}</td>
+                  <td>{t('Search in documentation')}</td>
                 </tr>
                 <tr>
                   <td>
@@ -683,7 +714,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">Enter</code>
                   </td>
-                  <td>{t("Execute query")}</td>
+                  <td>{t('Execute query')}</td>
                 </tr>
                 <tr>
                   <td>
@@ -693,7 +724,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">P</code>
                   </td>
-                  <td>{t("Prettify editors")}</td>
+                  <td>{t('Prettify editors')}</td>
                 </tr>
                 <tr>
                   <td>
@@ -703,7 +734,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">M</code>
                   </td>
-                  <td>{t("Merge fragments definitions into operation definition")}</td>
+                  <td>
+                    {t('Merge fragments definitions into operation definition')}
+                  </td>
                 </tr>
                 <tr>
                   <td>
@@ -713,7 +746,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">C</code>
                   </td>
-                  <td>{t("Copy query")}</td>
+                  <td>{t('Copy query')}</td>
                 </tr>
                 <tr>
                   <td>
@@ -723,7 +756,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                     {' + '}
                     <code className="graphiql-key">R</code>
                   </td>
-                  <td>{t("Re-fetch schema using introspection")}</td>
+                  <td>{t('Re-fetch schema using introspection')}</td>
                 </tr>
               </tbody>
             </table>
@@ -750,7 +783,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
         }}
       >
         <div className="graphiql-dialog-header">
-          <div className="graphiql-dialog-title">{t("Settings")}</div>
+          <div className="graphiql-dialog-title">{t('Settings')}</div>
           <Dialog.Close
             onClick={() => {
               setShowDialog(null);
@@ -762,12 +795,12 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
           <div className="graphiql-dialog-section">
             <div>
               <div className="graphiql-dialog-section-title">
-                {t("Persist headers")}
+                {t('Persist headers')}
               </div>
               <div className="graphiql-dialog-section-caption">
-                {t("Save headers upon reloading.")}{' '}
+                {t('Save headers upon reloading.')}{' '}
                 <span className="graphiql-warning-text">
-                  {t("Only enable if you trust this device.")}
+                  {t('Only enable if you trust this device.')}
                 </span>
               </div>
             </div>
@@ -782,7 +815,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                   editorContext.setShouldPersistHeaders(true);
                 }}
               >
-                {t("On")}
+                {t('On')}
               </Button>
               <Button
                 type="button"
@@ -794,16 +827,16 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                   editorContext.setShouldPersistHeaders(false);
                 }}
               >
-                {t("Off")}
+                {t('Off')}
               </Button>
             </ButtonGroup>
           </div>
         ) : null}
         <div className="graphiql-dialog-section">
           <div>
-            <div className="graphiql-dialog-section-title">{t("Theme")}</div>
+            <div className="graphiql-dialog-section-title">{t('Theme')}</div>
             <div className="graphiql-dialog-section-caption">
-              {t("Adjust how the interface looks like.")}
+              {t('Adjust how the interface looks like.')}
             </div>
           </div>
           <div>
@@ -813,31 +846,63 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                 className={theme === null ? 'active' : ''}
                 onClick={() => setTheme(null)}
               >
-                {t("System")}
+                {t('System')}
               </Button>
               <Button
                 type="button"
                 className={theme === 'light' ? 'active' : ''}
                 onClick={() => setTheme('light')}
               >
-                {t("Light")}
+                {t('Light')}
               </Button>
               <Button
                 type="button"
                 className={theme === 'dark' ? 'active' : ''}
                 onClick={() => setTheme('dark')}
               >
-                {t("Dark")}
+                {t('Dark')}
               </Button>
             </ButtonGroup>
+          </div>
+        </div>
+        <div className="graphiql-dialog-section">
+          <div>
+            <div className="graphiql-dialog-section-title">Languages</div>
+            <div className="graphiql-dialog-section-caption">
+              {t('Switch display language (page will refresh)')}
+            </div>
+          </div>
+          <div>
+            <Menu>
+              <Menu.Button style={{ padding: '4px 10px' }}>
+                {t('languageName')}
+                <span aria-hidden>▾</span>
+              </Menu.Button>
+              <Menu.List portal={false}>
+                {Object.keys(resources).map(key => (
+                  <Menu.Item
+                    key={key}
+                    onSelect={async () => {
+                      await i18n.changeLanguage(key);
+                      window.location.reload();
+                    }}
+                    style={{ minWidth: 80 }}
+                  >
+                    {resources[key].translations.languageName}
+                  </Menu.Item>
+                ))}
+              </Menu.List>
+            </Menu>
           </div>
         </div>
         {storageContext ? (
           <div className="graphiql-dialog-section">
             <div>
-              <div className="graphiql-dialog-section-title">{t("Clear storage")}</div>
+              <div className="graphiql-dialog-section-title">
+                {t('Clear storage')}
+              </div>
               <div className="graphiql-dialog-section-caption">
-                {t("Remove all locally stored data and start fresh.")}
+                {t('Remove all locally stored data and start fresh.')}
               </div>
             </div>
             <div>
@@ -857,8 +922,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps) {
                 {clearStorageStatus === 'success'
                   ? t('Cleared data')
                   : clearStorageStatus === 'error'
-                    ? t('Failed')
-                    : t('Clear data')}
+                  ? t('Failed')
+                  : t('Clear data')}
               </Button>
             </div>
           </div>

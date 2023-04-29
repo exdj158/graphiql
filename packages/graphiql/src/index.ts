@@ -15,13 +15,15 @@ export { GraphiQLProvider } from '@graphiql/react';
  * Definitions
  */
 export type {
-  GraphiQLProps,
-  GraphiQLInterfaceProps,
+    GraphiQLProps,
+    GraphiQLInterfaceProps,
 } from './components/GraphiQL';
 export type { GraphiQLProviderProps } from '@graphiql/react';
 
 export {
-  GraphiQLInterface,
-  GraphiQL,
-  GraphiQL as default,
+    GraphiQLInterface,
+    GraphiQL,
+    GraphiQL as default,
 } from './components/GraphiQL';
+
+export { default as i18n } from './utils/i18n'
